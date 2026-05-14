@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 from strategy import Strategy
 from research_team import ResearchTeam
+from singularity_engine import SingularityEngine
 import json
 
 # Mock/Skeleton for Alpaca API
@@ -19,6 +20,7 @@ class PaperTradingEngine:
     def __init__(self):
         self.strategy = Strategy()
         self.research_team = ResearchTeam()
+        self.singularity = SingularityEngine()
         self.log_file = "paper_results.csv"
         self.traces_dir = "traces"
 
@@ -173,6 +175,18 @@ class PaperTradingEngine:
             print("\nFetching latest market data...")
             window_data = self._fetch_latest_data()
 
+            # Singularity Engine: Signal Decomposition
+            is_dissonant, noise_ratio = self.singularity.analyze_market_dissonance(window_data)
+            self.strategy.shock_neutral_mode = is_dissonant
+            if is_dissonant:
+                print(f"[ORACLE WARNING] High Market Dissonance detected (N2S: {noise_ratio:.4f}). Entering Shock-Neutral Mode.")
+                # Trigger Recursive Agent Optimization (RAO)
+                arbitrage_path_stable = self.singularity.execute_rao_swarm(window_data)
+                self.strategy.rao_arbitrage_approved = arbitrage_path_stable
+            else:
+                self.strategy.shock_neutral_mode = False
+                self.strategy.rao_arbitrage_approved = False
+
             # Evaluate SMC Strategy Rules & Macro Filter
             print("Evaluating SMC Strategy Rules...")
             is_liquidity_sweep = self.strategy.identify_liquidity_sweeps(window_data)
@@ -229,13 +243,20 @@ class PaperTradingEngine:
                 print(f"Reasoning trace captured in {trace_file}")
 
                 if cro_approved:
-                    if len(open_positions) >= max_open_positions:
+                    # Singularity Neutrality Execution Override
+                    if self.strategy.shock_neutral_mode and not self.strategy.rao_arbitrage_approved:
+                        reasoning = f"Setup approved by CRO, but aborted due to Shock-Neutral mode. RAO Swarm failed to find stable arbitrage across Laurent divergence. Trace: {trace_file}"
+                        action = "PASS"
+                        self.log_trade(action, reasoning, drawdown_status)
+                        expected_pnl, realized_pnl = 0, 0
+                    elif len(open_positions) >= max_open_positions:
                         reasoning = f"Setup approved, but max open positions ({max_open_positions}) reached. Position-Aware engine skips entry."
                         action = "PASS"
                         self.log_trade(action, reasoning, drawdown_status)
                         expected_pnl, realized_pnl = 0, 0
                     else:
-                        reasoning = f"Valid setup approved by CRO. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
+                        rao_tag = " [RAO Arbitrage Verified]" if self.strategy.shock_neutral_mode else ""
+                        reasoning = f"Valid setup approved by CRO{rao_tag}. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
                         action = "ENTER LONG/SHORT"
                         self.log_trade(action, reasoning, drawdown_status)
 

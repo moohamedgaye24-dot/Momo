@@ -7,6 +7,10 @@ class Strategy:
         self.risk_per_trade_limit = 0.01 # 1% risk-per-trade limit
         self.total_drawdown_kill_switch = 0.05 # 5% total drawdown kill-switch
 
+        # Singularity Neutrality states
+        self.shock_neutral_mode = False
+        self.rao_arbitrage_approved = False
+
     def identify_liquidity_sweeps(self, window):
         if len(window) < 5:
             return False
