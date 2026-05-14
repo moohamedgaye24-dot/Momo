@@ -4,5 +4,3 @@ requests
 yfinance
 alpaca-py
 pyzmq
-fastapi
-uvicorn
