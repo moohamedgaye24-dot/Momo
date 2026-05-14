@@ -41,10 +41,18 @@ class BacktestHarness:
 
                 win = random.choice([True, False, False])
 
+                expected_pnl = risk_amount * 2 # Assuming 1:2 RR
+
                 if win:
-                    profit = risk_amount * 2
-                    self.balance += profit
-                    self.trades.append({'date': window.index[-1], 'result': 'win', 'pnl': profit})
+                    # Mock varying realized P&L to simulate slippage, runner extensions, or volatility
+                    realized_profit = random.choice([expected_pnl * 0.8, expected_pnl, expected_pnl * 3.0])
+                    self.balance += realized_profit
+                    self.trades.append({'date': window.index[-1], 'result': 'win', 'pnl': realized_profit})
+
+                    # Surprise Ratio Check
+                    surprise_ratio = abs(realized_profit - expected_pnl)
+                    if surprise_ratio > (expected_pnl * 0.5):
+                        self.failed_patterns.append(f"Date: {window.index[-1].date()} | PnL: {realized_profit:.2f} | Reason: Lucky/Unpredictable Win (Surprise Ratio high). Do not over-optimize on this.")
                 else:
                     loss = risk_amount
                     self.balance -= loss
@@ -82,6 +90,8 @@ class BacktestHarness:
         years = data.index.year.unique()
         all_results = []
 
+        baseline_sharpe = None
+
         for year in years[:-1]:
             print(f"\n--- Optimizing on {year}, Testing on {year+1} ---")
 
@@ -113,6 +123,24 @@ class BacktestHarness:
             print(f"Annualized Sharpe Ratio: {results['sharpe_ratio']:.2f}")
             print(f"Max Drawdown: {results['max_drawdown']:.2%}")
             print(f"Number of Trades: {results['num_trades']}")
+
+            # Rollback Trigger Logic
+            if baseline_sharpe is None and results['sharpe_ratio'] > 0:
+                baseline_sharpe = results['sharpe_ratio']
+                print(f"Baseline Sharpe established at {baseline_sharpe:.2f}")
+            elif baseline_sharpe is not None:
+                if results['sharpe_ratio'] < (baseline_sharpe * 0.8):
+                    print(f"CRITICAL: Sharpe Ratio dropped by >20% (from {baseline_sharpe:.2f} to {results['sharpe_ratio']:.2f}). Triggering Rollback!")
+                    import subprocess
+                    try:
+                        subprocess.run(["git", "reset", "--hard", "HEAD~1"], check=True)
+                        print("Rollback successful. The last evolution has been reverted.")
+                    except Exception as e:
+                        print(f"Rollback failed: {e}")
+                else:
+                    # Update baseline if improved
+                    if results['sharpe_ratio'] > baseline_sharpe:
+                        baseline_sharpe = results['sharpe_ratio']
 
         return all_results
 
