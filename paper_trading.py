@@ -52,8 +52,8 @@ class PaperTradingEngine:
                 bars = self.data_client.get_crypto_bars(request_params)
                 df = bars.df
                 # Reset index to make 'symbol' and 'timestamp' columns accessible if needed
-                # Rename columns to match Strategy class expectations (High, Low, Close)
-                df = df.rename(columns={'high': 'High', 'low': 'Low', 'close': 'Close'})
+                # Rename columns to match Strategy class expectations (High, Low, Close, Open)
+                df = df.rename(columns={'high': 'High', 'low': 'Low', 'close': 'Close', 'open': 'Open'})
                 return df
             except Exception as e:
                 print(f"Error fetching data from Alpaca: {e}")
@@ -64,7 +64,8 @@ class PaperTradingEngine:
         data = {
             'High': [1.0500, 1.0520, 1.0490, 1.0550, 1.0560] * 4,
             'Low': [1.0450, 1.0460, 1.0410, 1.0480, 1.0500] * 4,
-            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0540] * 4
+            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0540] * 4,
+            'Open': [1.0470, 1.0500, 1.0420, 1.0520, 1.0530] * 4
         }
         df = pd.DataFrame(data)
         return df
@@ -78,7 +79,7 @@ class PaperTradingEngine:
             writer.writerow([timestamp, action, reasoning, risk, drawdown_status])
         print(f"[{timestamp}] Logged: {action} | Reason: {reasoning}")
 
-    def evaluate_binary_evals(self, action, current_drawdown, is_liquidity_sweep, is_fvg):
+    def evaluate_binary_evals(self, action, current_drawdown, is_liquidity_sweep, is_fvg, is_breaker, is_rejection, expected_pnl=0, realized_pnl=0):
         # Automated Binary Evals (Pass/Fail)
         passed = True
         reason = ""
@@ -90,9 +91,19 @@ class PaperTradingEngine:
 
         # Rule 2: SMC Setup Requirements
         if action == "ENTER LONG/SHORT":
-            if not (is_liquidity_sweep and is_fvg):
+            has_primary = (is_liquidity_sweep and is_fvg)
+            has_secondary = is_breaker or is_rejection
+            if not (has_primary or has_secondary):
                 passed = False
-                reason = "Failed: Entered trade without full SMC confirmation (missing Liquidity Sweep or FVG)."
+                reason = "Failed: Entered trade without SMC confirmation (missing Primary FVG/Sweep or Secondary Breaker/Rejection)."
+
+        # Surprise Ratio Calibration
+        if realized_pnl > 0: # If it was a win
+            surprise_ratio = abs(realized_pnl - expected_pnl)
+            if surprise_ratio > abs(expected_pnl) * 0.5: # e.g. 50% deviation
+                with open("learnings.md", "a") as f:
+                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    f.write(f"- [{timestamp}] Lucky/Unpredictable Win: Surprise Ratio is high ({surprise_ratio:.2f}). Do not over-optimize on this setup.\n")
 
         if not passed:
             with open("learnings.md", "a") as f:
@@ -133,10 +144,21 @@ class PaperTradingEngine:
             print("\nFetching latest market data...")
             window_data = self._fetch_latest_data()
 
-            # Evaluate SMC Strategy Rules
+            # Evaluate SMC Strategy Rules & Macro Filter
             print("Evaluating SMC Strategy Rules...")
             is_liquidity_sweep = self.strategy.identify_liquidity_sweeps(window_data)
             is_fvg = self.strategy.check_fair_value_gap(window_data)
+            is_breaker = self.strategy.identify_breaker_blocks(window_data)
+            is_rejection = self.strategy.identify_rejection_blocks(window_data)
+            atr_val = self.strategy.calculate_atr(window_data)
+
+            # Macro Filter (Mocking VIX > 25 condition randomly for demonstration)
+            import random
+            vix_high = random.choice([True, False])
+            macro_adjustment = 0.7 if vix_high else 1.0
+
+            # Position sizing based on ATR
+            dynamic_risk_limit = self.strategy.risk_per_trade_limit * (1 / (atr_val * 100)) * macro_adjustment
 
             # Mock drawdown status
             current_drawdown = 0.02 # e.g., 2% current drawdown
@@ -148,28 +170,28 @@ class PaperTradingEngine:
                 reasoning = f"Kill-switch triggered! Current drawdown ({current_drawdown*100}%) exceeds limit ({self.strategy.total_drawdown_kill_switch*100}%)."
                 action = "HALT"
                 self.log_trade(action, reasoning, "KILLED")
-                self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg)
+                self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg, is_breaker, is_rejection)
                 break
 
-            if is_liquidity_sweep and is_fvg:
-                reasoning = "Valid setup identified: Liquidity Sweep AND Fair Value Gap (FVG) detected on the latest data."
+            has_primary = is_liquidity_sweep and is_fvg
+            has_secondary = is_breaker or is_rejection
+
+            if has_primary or has_secondary:
+                reasoning = f"Valid setup: Primary={has_primary}, Secondary={has_secondary}. Vol-scaled risk used. VIX_High={vix_high}"
                 action = "ENTER LONG/SHORT"
                 self.log_trade(action, reasoning, drawdown_status)
                 completed_trades += 1
-            elif is_liquidity_sweep:
-                reasoning = "Invalid setup: Liquidity sweep occurred, but no confirming FVG found."
-                action = "PASS"
-                self.log_trade(action, reasoning, drawdown_status)
-            elif is_fvg:
-                reasoning = "Invalid setup: FVG detected, but no preceding Liquidity Sweep found."
-                action = "PASS"
-                self.log_trade(action, reasoning, drawdown_status)
-            else:
-                reasoning = "Invalid setup: No Liquidity Sweep and no FVG detected."
-                action = "PASS"
-                self.log_trade(action, reasoning, drawdown_status)
 
-            self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg)
+                # Mock Realized vs Expected P&L for Surprise Ratio
+                expected_pnl = 100 * dynamic_risk_limit
+                realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
+            else:
+                reasoning = "Invalid setup: No Primary (Sweep+FVG) or Secondary (Breaker/Rejection) blocks detected."
+                action = "PASS"
+                self.log_trade(action, reasoning, drawdown_status)
+                expected_pnl, realized_pnl = 0, 0
+
+            self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg, is_breaker, is_rejection, expected_pnl, realized_pnl)
             self.update_dashboard(completed_trades, wins, losses)
 
             if completed_trades > 0 and completed_trades % 5 == 0:

@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 class Strategy:
     def __init__(self):
@@ -47,6 +48,34 @@ class Strategy:
         bearish_fvg = highs.iloc[-1] < lows.iloc[-3]
 
         return bullish_fvg or bearish_fvg
+
+    def identify_breaker_blocks(self, window):
+        # Mock logic: A failed order block that flips bias
+        if len(window) < 5:
+            return False
+        # Simplified: If price creates a higher high then aggressively breaks the previous low
+        return True if window['Close'].iloc[-1] < window['Low'].iloc[-3] else False
+
+    def identify_rejection_blocks(self, window):
+        # Mock logic: Identifying long wicks showing rejection
+        if len(window) < 2:
+            return False
+        candle = window.iloc[-1]
+        body = abs(candle['Close'] - candle['Open'])
+        upper_wick = candle['High'] - max(candle['Close'], candle['Open'])
+        lower_wick = min(candle['Close'], candle['Open']) - candle['Low']
+        return True if (upper_wick > body * 2) or (lower_wick > body * 2) else False
+
+    def calculate_atr(self, window, period=14):
+        if len(window) < period + 1:
+            return 0.001 # Fallback value
+        high_low = window['High'] - window['Low']
+        high_close = abs(window['High'] - window['Close'].shift())
+        low_close = abs(window['Low'] - window['Close'].shift())
+        ranges = pd.concat([high_low, high_close, low_close], axis=1)
+        true_range = np.max(ranges, axis=1)
+        atr = true_range.rolling(period).mean().iloc[-1]
+        return atr
 
     def check_market_structure_shift(self, price_data):
         # Placeholder for entering after MSS
