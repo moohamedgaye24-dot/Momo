@@ -13,6 +13,9 @@ try:
     from alpaca.data.historical import CryptoHistoricalDataClient
     from alpaca.data.requests import CryptoBarsRequest
     from alpaca.data.timeframe import TimeFrame
+    from alpaca.trading.client import TradingClient
+    from alpaca.trading.requests import MarketOrderRequest
+    from alpaca.trading.enums import OrderSide, TimeInForce
 except ImportError:
     print("alpaca-py not installed, using mock data client.")
 
@@ -33,11 +36,14 @@ class PaperTradingEngine:
         if self.api_key and self.api_secret:
             try:
                 self.data_client = CryptoHistoricalDataClient(api_key=self.api_key, secret_key=self.api_secret)
+                self.trading_client = TradingClient(self.api_key, self.api_secret, paper=True)
             except Exception as e:
                 print("Failed to initialize Alpaca client:", e)
                 self.data_client = None
+                self.trading_client = None
         else:
             self.data_client = None
+            self.trading_client = None
             print("Warning: APCA_API_KEY_ID or APCA_API_SECRET_KEY not found in environment.")
 
         # Initialize CSV log file with headers if it doesn't exist
@@ -258,9 +264,27 @@ class PaperTradingEngine:
                         rao_tag = " [RAO Arbitrage Verified]" if self.strategy.shock_neutral_mode else ""
                         reasoning = f"Valid setup approved by CRO{rao_tag}. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
                         action = "ENTER LONG/SHORT"
+
+                        # Execute Real Alpaca Paper Trade
+                        try:
+                            if self.trading_client:
+                                print(f"Executing real Alpaca paper trade based on SMC setup.")
+                                req = MarketOrderRequest(
+                                    symbol="BTC/USD",
+                                    qty=0.01, # Static nominal quantity for demo
+                                    side=OrderSide.BUY, # Static buy for demo
+                                    time_in_force=TimeInForce.GTC
+                                )
+                                order = self.trading_client.submit_order(order_data=req)
+                                reasoning += f" | Alpaca Order ID: {order.id}"
+                            else:
+                                reasoning += " | (MOCKED: No Alpaca Client connected)"
+                        except Exception as e:
+                            reasoning += f" | Alpaca Execution Failed: {e}"
+
                         self.log_trade(action, reasoning, drawdown_status)
 
-                        # Mock Realized vs Expected P&L for Surprise Ratio
+                        # Mock Realized vs Expected P&L for Surprise Ratio logic continuity
                         expected_pnl = 100 * dynamic_risk_limit
                         realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
 
