@@ -148,7 +148,28 @@ class PaperTradingEngine:
         wins = 0
         losses = 0
 
+        # Position-Aware variables
+        open_positions = []
+        max_open_positions = 5
+
+        # Reflexivity Sensor variable
+        consensus_streak = 0
+
         while True:
+            # Mock position management (resolving positions to simulate PnL)
+            active_positions = []
+            for pos in open_positions:
+                pos['duration'] -= 1
+                if pos['duration'] <= 0:
+                    completed_trades += 1
+                    if pos['result'] == 'win':
+                        wins += 1
+                    else:
+                        losses += 1
+                else:
+                    active_positions.append(pos)
+            open_positions = active_positions
+
             print("\nFetching latest market data...")
             window_data = self._fetch_latest_data()
 
@@ -189,6 +210,16 @@ class PaperTradingEngine:
                 print("Setup detected. Triggering Adversarial Debate Layer...")
                 cro_approved, trace = self.research_team.cro_consensus(window_data)
 
+                # Reflexivity Sensor Logic
+                if cro_approved and trace['bull_score'] > trace['bear_score'] * 2.0:
+                    consensus_streak += 1
+                else:
+                    consensus_streak = 0
+
+                if consensus_streak >= 3:
+                    dynamic_risk_limit *= 0.5
+                    print(f"Reflexivity Sensor: 100% consensus for {consensus_streak} rounds. Crowded Trade detected. Risk reduced by 50%.")
+
                 # Log Reasoning Trace
                 trace_id = datetime.now().strftime('%Y%m%d_%H%M%S')
                 # Use a counter to prevent file overwrite in the same second during mock tests
@@ -198,14 +229,23 @@ class PaperTradingEngine:
                 print(f"Reasoning trace captured in {trace_file}")
 
                 if cro_approved:
-                    reasoning = f"Valid setup approved by CRO. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
-                    action = "ENTER LONG/SHORT"
-                    self.log_trade(action, reasoning, drawdown_status)
-                    completed_trades += 1
+                    if len(open_positions) >= max_open_positions:
+                        reasoning = f"Setup approved, but max open positions ({max_open_positions}) reached. Position-Aware engine skips entry."
+                        action = "PASS"
+                        self.log_trade(action, reasoning, drawdown_status)
+                        expected_pnl, realized_pnl = 0, 0
+                    else:
+                        reasoning = f"Valid setup approved by CRO. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
+                        action = "ENTER LONG/SHORT"
+                        self.log_trade(action, reasoning, drawdown_status)
 
-                    # Mock Realized vs Expected P&L for Surprise Ratio
-                    expected_pnl = 100 * dynamic_risk_limit
-                    realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
+                        # Mock Realized vs Expected P&L for Surprise Ratio
+                        expected_pnl = 100 * dynamic_risk_limit
+                        realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
+
+                        # Add to open positions
+                        mock_result = 'win' if realized_pnl > 0 else 'loss'
+                        open_positions.append({'duration': random.randint(1, 3), 'result': mock_result})
                 else:
                     reasoning = f"Setup rejected by CRO debate. Trace: {trace_file}"
                     action = "PASS"

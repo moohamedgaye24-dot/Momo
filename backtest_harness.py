@@ -1,12 +1,14 @@
 import pandas as pd
 import yfinance as yf
 from strategy import Strategy
+from research_team import ResearchTeam
 import random
 import os
 
 class BacktestHarness:
     def __init__(self):
         self.strategy = Strategy()
+        self.research_team = ResearchTeam()
         self.initial_balance = 10000.0
         self.balance = self.initial_balance
         self.trades = []
@@ -28,7 +30,43 @@ class BacktestHarness:
         peak_balance = self.balance
         max_drawdown = 0.0
 
+        # Position-Aware Reasoning: Track continuous risk exposure
+        open_positions = []
+
+        # Reflexivity Sensor: Track consecutive consensus rounds
+        consensus_streak = 0
+
         for i in range(20, len(data)):
+            # Process mock position exits for Position-Aware Reasoning
+            # In a real engine, we'd check if current price hits SL or TP
+            active_positions = []
+            for pos in open_positions:
+                pos['duration'] -= 1
+                if pos['duration'] <= 0:
+                    # Position resolves
+                    self.balance += pos['pnl']
+                    self.trades.append({'date': data.index[i], 'result': 'win' if pos['pnl'] > 0 else 'loss', 'pnl': pos['pnl']})
+
+                    # Surprise Ratio Check
+                    if pos['pnl'] > 0:
+                        surprise_ratio = abs(pos['pnl'] - pos['expected_pnl'])
+                        if surprise_ratio > (pos['expected_pnl'] * 0.5):
+                            self.failed_patterns.append(f"Date: {data.index[i].date()} | PnL: {pos['pnl']:.2f} | Reason: Lucky/Unpredictable Win (Surprise Ratio high). Do not over-optimize on this.")
+                    else:
+                        self.failed_patterns.append(f"Date: {data.index[i].date()} | Loss: {abs(pos['pnl']):.2f} | Reason: Simulated market exit against setup.")
+                else:
+                    active_positions.append(pos)
+            open_positions = active_positions
+
+            # Drawdown check based on realized balance (in reality would include unrealized)
+            if self.balance > peak_balance:
+                peak_balance = self.balance
+            drawdown = (peak_balance - self.balance) / peak_balance
+            if drawdown > max_drawdown:
+                max_drawdown = drawdown
+            if drawdown >= self.strategy.total_drawdown_kill_switch:
+                break
+
             # Pass only the last 20 bars to avoid memory issues and improve efficiency
             window = data.iloc[i-20:i+1]
 
@@ -36,39 +74,37 @@ class BacktestHarness:
             fvg = self.strategy.check_fair_value_gap(window)
 
             if liquidity_sweep and fvg:
-                # Use adjusted risk limit for walk-forward optimization
-                risk_amount = self.balance * (self.strategy.risk_per_trade_limit * risk_multiplier)
+                # Trigger debate for setups
+                cro_approved, trace = self.research_team.cro_consensus(window)
 
-                win = random.choice([True, False, False])
-
-                expected_pnl = risk_amount * 2 # Assuming 1:2 RR
-
-                if win:
-                    # Mock varying realized P&L to simulate slippage, runner extensions, or volatility
-                    realized_profit = random.choice([expected_pnl * 0.8, expected_pnl, expected_pnl * 3.0])
-                    self.balance += realized_profit
-                    self.trades.append({'date': window.index[-1], 'result': 'win', 'pnl': realized_profit})
-
-                    # Surprise Ratio Check
-                    surprise_ratio = abs(realized_profit - expected_pnl)
-                    if surprise_ratio > (expected_pnl * 0.5):
-                        self.failed_patterns.append(f"Date: {window.index[-1].date()} | PnL: {realized_profit:.2f} | Reason: Lucky/Unpredictable Win (Surprise Ratio high). Do not over-optimize on this.")
+                # Check 100% consensus (Bear score is very low, Bull is very high)
+                # For mock simplicity, we define 100% consensus as approval where Bull > 2 * Bear
+                if cro_approved and trace['bull_score'] > trace['bear_score'] * 2.0:
+                    consensus_streak += 1
                 else:
-                    loss = risk_amount
-                    self.balance -= loss
-                    self.trades.append({'date': window.index[-1], 'result': 'loss', 'pnl': -loss})
+                    consensus_streak = 0
 
-                    # Log failed pattern context
-                    self.failed_patterns.append(f"Date: {window.index[-1].date()} | Loss: {loss:.2f} | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).")
+                if cro_approved:
+                    # Calculate available balance (Position-Aware)
+                    exposure = sum([abs(p['pnl']) for p in open_positions if p['pnl'] < 0]) # Mock max loss exposure
+                    available_balance = self.balance - exposure
 
-                if self.balance > peak_balance:
-                    peak_balance = self.balance
-                drawdown = (peak_balance - self.balance) / peak_balance
-                if drawdown > max_drawdown:
-                    max_drawdown = drawdown
+                    # Base risk amount
+                    risk_amount = available_balance * (self.strategy.risk_per_trade_limit * risk_multiplier)
 
-                if drawdown >= self.strategy.total_drawdown_kill_switch:
-                    break
+                    # Reflexivity Sensor execution
+                    if consensus_streak >= 3:
+                        # "Crowded Trade" -> reduce risk by 50%
+                        risk_amount *= 0.5
+
+                    expected_pnl = risk_amount * 2 # Assuming 1:2 RR
+                    win = random.choice([True, False, False])
+
+                    if win:
+                        realized_profit = random.choice([expected_pnl * 0.8, expected_pnl, expected_pnl * 3.0])
+                        open_positions.append({'duration': random.randint(1, 5), 'pnl': realized_profit, 'expected_pnl': expected_pnl})
+                    else:
+                        open_positions.append({'duration': random.randint(1, 5), 'pnl': -risk_amount, 'expected_pnl': expected_pnl})
 
         total_return = (self.balance - self.initial_balance) / self.initial_balance
         returns = [t['pnl']/self.initial_balance for t in self.trades]
