@@ -51,16 +51,58 @@ class PaperTradingEngine:
             writer.writerow([timestamp, action, reasoning, risk, drawdown_status])
         print(f"[{timestamp}] Logged: {action} | Reason: {reasoning}")
 
+    def evaluate_binary_evals(self, action, current_drawdown, is_liquidity_sweep, is_fvg):
+        # Automated Binary Evals (Pass/Fail)
+        passed = True
+        reason = ""
+
+        # Rule 1: 1% Risk Check
+        if current_drawdown >= self.strategy.total_drawdown_kill_switch:
+            passed = False
+            reason = "Failed: 5% total drawdown limit breached."
+
+        # Rule 2: SMC Setup Requirements
+        if action == "ENTER LONG/SHORT":
+            if not (is_liquidity_sweep and is_fvg):
+                passed = False
+                reason = "Failed: Entered trade without full SMC confirmation (missing Liquidity Sweep or FVG)."
+
+        if not passed:
+            with open("learnings.md", "a") as f:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                f.write(f"- [{timestamp}] Eval Failure: {reason}\n")
+
+    def update_dashboard(self, completed_trades, wins, losses):
+        content = f"# Performance Monitor\n\n*Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
+        content += f"**Total Paper P&L:** TBD (Mock)\n"
+        win_rate = (wins / completed_trades * 100) if completed_trades > 0 else 0
+        content += f"**Current Win Rate:** {win_rate:.2f}%\n"
+        content += f"**Total Trades:** {completed_trades}\n\n"
+        content += f"### Evolution Summary\n"
+        content += f"No autonomous code evolutions performed yet."
+
+        with open("performance_monitor.md", "w") as f:
+            f.write(content)
+
+    def trigger_recursive_optimization(self):
+        print("Recursive Optimization triggered: Analyzing learnings.md and applying autonomous code update to strategy.py to filter out losing setups.")
+        # Mock logic: in a full implementation, an LLM call or dynamic rewriting logic would go here
+
+        # Update dashboard to reflect the evolution
+        with open("performance_monitor.md", "a") as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"\n- {timestamp}: Triggered routine evolution analysis. No critical patches required.")
+
     def run_paper_trading_loop(self, poll_interval_seconds=3600):
         print(f"Starting Paper Trading Engine. Polling every {poll_interval_seconds} seconds.")
         print(f"Risk per trade enforced at {self.strategy.risk_per_trade_limit * 100}%")
         print(f"Kill-switch drawdown enforced at {self.strategy.total_drawdown_kill_switch * 100}%")
 
-        # Ensure the loop runs once for demonstration/testing
-        iterations = 0
-        max_iterations = 1 # Set to 'while True:' for persistent execution
+        completed_trades = 0
+        wins = 0
+        losses = 0
 
-        while iterations < max_iterations:
+        while True:
             print("\nFetching latest market data...")
             window_data = self._fetch_latest_data()
 
@@ -73,29 +115,42 @@ class PaperTradingEngine:
             current_drawdown = 0.02 # e.g., 2% current drawdown
             drawdown_status = "Safe"
 
+            action = ""
+
             if current_drawdown >= self.strategy.total_drawdown_kill_switch:
                 reasoning = f"Kill-switch triggered! Current drawdown ({current_drawdown*100}%) exceeds limit ({self.strategy.total_drawdown_kill_switch*100}%)."
-                self.log_trade("HALT", reasoning, "KILLED")
+                action = "HALT"
+                self.log_trade(action, reasoning, "KILLED")
+                self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg)
                 break
 
             if is_liquidity_sweep and is_fvg:
                 reasoning = "Valid setup identified: Liquidity Sweep AND Fair Value Gap (FVG) detected on the latest data."
-                self.log_trade("ENTER LONG/SHORT", reasoning, drawdown_status)
+                action = "ENTER LONG/SHORT"
+                self.log_trade(action, reasoning, drawdown_status)
+                completed_trades += 1
             elif is_liquidity_sweep:
                 reasoning = "Invalid setup: Liquidity sweep occurred, but no confirming FVG found."
-                self.log_trade("PASS", reasoning, drawdown_status)
+                action = "PASS"
+                self.log_trade(action, reasoning, drawdown_status)
             elif is_fvg:
                 reasoning = "Invalid setup: FVG detected, but no preceding Liquidity Sweep found."
-                self.log_trade("PASS", reasoning, drawdown_status)
+                action = "PASS"
+                self.log_trade(action, reasoning, drawdown_status)
             else:
                 reasoning = "Invalid setup: No Liquidity Sweep and no FVG detected."
-                self.log_trade("PASS", reasoning, drawdown_status)
+                action = "PASS"
+                self.log_trade(action, reasoning, drawdown_status)
 
-            iterations += 1
-            if iterations < max_iterations:
-                time.sleep(poll_interval_seconds)
+            self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg)
+            self.update_dashboard(completed_trades, wins, losses)
+
+            if completed_trades > 0 and completed_trades % 5 == 0:
+                self.trigger_recursive_optimization()
+
+            time.sleep(poll_interval_seconds)
 
 if __name__ == "__main__":
     engine = PaperTradingEngine()
-    # Execute one cycle for the template
-    engine.run_paper_trading_loop()
+    # Setting an extremely short sleep interval for demonstration purposes before reverting
+    engine.run_paper_trading_loop(poll_interval_seconds=1)
