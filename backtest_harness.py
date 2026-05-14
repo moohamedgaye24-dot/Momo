@@ -12,9 +12,14 @@ class BacktestHarness:
         self.trades = []
         self.failed_patterns = []
 
-    def fetch_data(self, start_date='2021-05-01', end_date='2026-05-01'):
-        print(f"Fetching EUR/USD data from {start_date} to {end_date}...")
-        data = yf.download('EURUSD=X', start=start_date, end=end_date, interval='1d')
+    def fetch_data(self):
+        from datetime import datetime, timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=720) # Max 730 days for 1h data
+        start_str = start_date.strftime('%Y-%m-%d')
+        end_str = end_date.strftime('%Y-%m-%d')
+        print(f"Fetching EUR/USD data from {start_str} to {end_str} at 1-hour intervals...")
+        data = yf.download('EURUSD=X', start=start_str, end=end_str, interval='1h')
         return data
 
     def run_simulation(self, data, risk_multiplier=1.0):
