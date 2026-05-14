@@ -4,6 +4,8 @@ import csv
 from datetime import datetime
 import pandas as pd
 from strategy import Strategy
+from research_team import ResearchTeam
+import json
 
 # Mock/Skeleton for Alpaca API
 try:
@@ -16,7 +18,12 @@ except ImportError:
 class PaperTradingEngine:
     def __init__(self):
         self.strategy = Strategy()
+        self.research_team = ResearchTeam()
         self.log_file = "paper_results.csv"
+        self.traces_dir = "traces"
+
+        if not os.path.exists(self.traces_dir):
+            os.makedirs(self.traces_dir)
 
         # Alpaca configuration
         self.api_key = os.getenv("APCA_API_KEY_ID")
@@ -64,7 +71,8 @@ class PaperTradingEngine:
         data = {
             'High': [1.0500, 1.0520, 1.0490, 1.0550, 1.0560] * 4,
             'Low': [1.0450, 1.0460, 1.0410, 1.0480, 1.0500] * 4,
-            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0540] * 4,
+            # Artificially triggering the breaker block logic for mock testing
+            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0300] * 4,
             'Open': [1.0470, 1.0500, 1.0420, 1.0520, 1.0530] * 4
         }
         df = pd.DataFrame(data)
@@ -170,21 +178,40 @@ class PaperTradingEngine:
                 reasoning = f"Kill-switch triggered! Current drawdown ({current_drawdown*100}%) exceeds limit ({self.strategy.total_drawdown_kill_switch*100}%)."
                 action = "HALT"
                 self.log_trade(action, reasoning, "KILLED")
-                self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg, is_breaker, is_rejection)
+                self.evaluate_binary_evals(action, current_drawdown, is_liquidity_sweep, is_fvg, is_breaker, is_rejection, 0, 0)
                 break
 
             has_primary = is_liquidity_sweep and is_fvg
             has_secondary = is_breaker or is_rejection
 
             if has_primary or has_secondary:
-                reasoning = f"Valid setup: Primary={has_primary}, Secondary={has_secondary}. Vol-scaled risk used. VIX_High={vix_high}"
-                action = "ENTER LONG/SHORT"
-                self.log_trade(action, reasoning, drawdown_status)
-                completed_trades += 1
+                # Trigger Adversarial Debate
+                print("Setup detected. Triggering Adversarial Debate Layer...")
+                cro_approved, trace = self.research_team.cro_consensus(window_data)
 
-                # Mock Realized vs Expected P&L for Surprise Ratio
-                expected_pnl = 100 * dynamic_risk_limit
-                realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
+                # Log Reasoning Trace
+                trace_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+                # Use a counter to prevent file overwrite in the same second during mock tests
+                trace_file = os.path.join(self.traces_dir, f"trace_{trace_id}_{random.randint(1000, 9999)}.json")
+                with open(trace_file, "w") as f:
+                    json.dump(trace, f, indent=4)
+                print(f"Reasoning trace captured in {trace_file}")
+
+                if cro_approved:
+                    reasoning = f"Valid setup approved by CRO. Primary={has_primary}, Sec={has_secondary}. Vol-scaled risk. VIX_High={vix_high}. Trace: {trace_file}"
+                    action = "ENTER LONG/SHORT"
+                    self.log_trade(action, reasoning, drawdown_status)
+                    completed_trades += 1
+
+                    # Mock Realized vs Expected P&L for Surprise Ratio
+                    expected_pnl = 100 * dynamic_risk_limit
+                    realized_pnl = random.choice([-50, 50, 200]) # 200 would trigger high surprise ratio on win
+                else:
+                    reasoning = f"Setup rejected by CRO debate. Trace: {trace_file}"
+                    action = "PASS"
+                    self.log_trade(action, reasoning, drawdown_status)
+                    expected_pnl, realized_pnl = 0, 0
+
             else:
                 reasoning = "Invalid setup: No Primary (Sweep+FVG) or Secondary (Breaker/Rejection) blocks detected."
                 action = "PASS"

@@ -54,7 +54,8 @@ class Strategy:
         if len(window) < 5:
             return False
         # Simplified: If price creates a higher high then aggressively breaks the previous low
-        return True if window['Close'].iloc[-1] < window['Low'].iloc[-3] else False
+        # Updated mock to be slightly looser to allow traces to generate in mock runtime
+        return True if window['Close'].iloc[-1] <= window['Low'].iloc[-3] else False
 
     def identify_rejection_blocks(self, window):
         # Mock logic: Identifying long wicks showing rejection

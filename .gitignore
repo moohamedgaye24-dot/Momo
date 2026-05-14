@@ -2,3 +2,5 @@ __pycache__/
 loop_output.log
 process.pid
 paper_results.csv
+traces/
+research_weights.json

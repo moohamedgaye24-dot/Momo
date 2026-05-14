@@ -2,23 +2,23 @@
 
 ## Failure Patterns
 
-- Date: 2024-05-28 | Loss: 50.50 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-28 | Loss: 50.75 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-29 | Loss: 52.55 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-29 | Loss: 52.81 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-30 | Loss: 53.07 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-30 | Loss: 53.33 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-31 | Loss: 53.59 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-31 | Loss: 53.33 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-31 | Loss: 53.06 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-05-31 | Loss: 52.79 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 53.06 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 52.79 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 52.53 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 52.26 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 52.00 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 51.74 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 52.00 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-03 | Loss: 51.74 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-04 | Loss: 51.48 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
-- Date: 2024-06-04 | Loss: 51.22 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 50.00 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 49.75 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 49.50 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 49.25 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 49.01 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-28 | Loss: 48.76 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-29 | Loss: 48.52 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-29 | Loss: 48.28 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-29 | Loss: 48.51 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-29 | Loss: 48.27 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-30 | Loss: 49.00 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-31 | Loss: 49.24 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-31 | Loss: 48.99 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-31 | Loss: 48.75 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-31 | Loss: 48.50 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-05-31 | Loss: 48.26 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-06-03 | Loss: 48.02 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-06-03 | Loss: 48.74 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-06-03 | Loss: 48.50 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).
+- Date: 2024-06-03 | Loss: 48.74 | Reason: Simulated market exit against setup (shallow liquidity sweep / false breakout).

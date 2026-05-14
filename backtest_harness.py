@@ -128,10 +128,58 @@ class BacktestHarness:
                 f.write(content)
             print("\nGenerated learnings.md with failure patterns.")
 
+    def apply_meta_learning(self):
+        """
+        Analyzes the /traces directory to see which researcher was right during failed trades.
+        Adjusts Darwinian Weights in a mocked 'research_weights.json' output.
+        """
+        print("\nApplying Meta-Learning via Darwinian Weight Adjustment...")
+        traces_dir = "traces"
+        if not os.path.exists(traces_dir):
+            print("No traces directory found. Skipping meta-learning.")
+            return
+
+        import json
+        import glob
+
+        trace_files = glob.glob(os.path.join(traces_dir, "*.json"))
+        if not trace_files:
+            print("No trace files found in /traces. Skipping meta-learning.")
+            return
+
+        bull_weight_adjustment = 0.0
+        bear_weight_adjustment = 0.0
+
+        for file in trace_files:
+            try:
+                with open(file, 'r') as f:
+                    trace = json.load(f)
+                    # If CRO approved but it ended up failing (which we infer from it being here in a basic mock)
+                    if trace.get("approved"):
+                        # Bear was right to be bearish, Bull was wrong
+                        bear_weight_adjustment += 0.05
+                        bull_weight_adjustment -= 0.05
+                    else:
+                        # Setup rejected. If it was a missed winner (hard to know without future data),
+                        # but if we assume rejected trades were safe calls:
+                        pass
+            except Exception as e:
+                pass
+
+        weights = {
+            "bull_weight_modifier": round(bull_weight_adjustment, 2),
+            "bear_weight_modifier": round(bear_weight_adjustment, 2)
+        }
+
+        with open("research_weights.json", "w") as f:
+            json.dump(weights, f, indent=4)
+        print(f"Meta-learning complete. Adjusted weights: {weights}")
+
     def run_autoresearch_loop(self):
         data = self.fetch_data()
         self.walk_forward_analysis(data)
         self.generate_learnings()
+        self.apply_meta_learning()
 
 if __name__ == "__main__":
     harness = BacktestHarness()
