@@ -56,7 +56,7 @@ class Strategy:
             return False
         # Simplified: If price creates a higher high then aggressively breaks the previous low
         # Updated mock to be slightly looser to allow traces to generate in mock runtime
-        return True if window['Close'].iloc[-1] <= window['Low'].iloc[-3] else False
+        return True if window['Close'].iloc[-1] < (window['Low'].iloc[-3] * 0.999) else False
 
     def identify_rejection_blocks(self, window):
         # Mock logic: Identifying long wicks showing rejection
@@ -66,7 +66,7 @@ class Strategy:
         body = abs(candle['Close'] - candle['Open'])
         upper_wick = candle['High'] - max(candle['Close'], candle['Open'])
         lower_wick = min(candle['Close'], candle['Open']) - candle['Low']
-        return True if (upper_wick > body * 2) or (lower_wick > body * 2) else False
+        return True if (upper_wick > body * 3) or (lower_wick > body * 3) else False
 
     def calculate_atr(self, window, period=14):
         if len(window) < period + 1:
