@@ -3,6 +3,7 @@ import numpy as np
 
 class Strategy:
     def __init__(self):
+        # INVARIANT: The autonomous update loop is forbidden from modifying this 1% limit.
         self.risk_per_trade_limit = 0.01 # 1% risk-per-trade limit
         self.total_drawdown_kill_switch = 0.05 # 5% total drawdown kill-switch
 
