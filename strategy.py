@@ -83,6 +83,21 @@ class Strategy:
         atr = true_range.rolling(period).mean().iloc[-1]
         return atr
 
+    def drawdown_shield_scaler(self, base_lots, current_dissonance_ratio):
+        """
+        Drawdown Shield: ATR-based Volatility Scaler that automatically reduces
+        lot sizes during spikes in market dissonance (from the Singularity Engine).
+        """
+        # If noise-to-signal ratio is exceptionally high (>0.5), slash lots drastically
+        if current_dissonance_ratio > 0.5:
+            return base_lots * 0.25
+        # If moderate dissonance (>0.3), cut lots in half
+        elif current_dissonance_ratio > 0.3:
+            return base_lots * 0.50
+
+        # Standard conditions
+        return base_lots
+
     def check_market_structure_shift(self, price_data):
         # Placeholder for entering after MSS
         pass
