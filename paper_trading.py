@@ -18,9 +18,18 @@ class PaperTradingEngine:
         self.strategy = Strategy()
         self.log_file = "paper_results.csv"
 
-        # In a real scenario, API keys should be loaded from environment variables
-        self.api_key = os.getenv("ALPACA_API_KEY", "YOUR_API_KEY")
-        self.api_secret = os.getenv("ALPACA_SECRET_KEY", "YOUR_SECRET_KEY")
+        # Alpaca configuration
+        self.api_key = os.getenv("APCA_API_KEY_ID")
+        self.api_secret = os.getenv("APCA_API_SECRET_KEY")
+        if self.api_key and self.api_secret:
+            try:
+                self.data_client = CryptoHistoricalDataClient(api_key=self.api_key, secret_key=self.api_secret)
+            except Exception as e:
+                print("Failed to initialize Alpaca client:", e)
+                self.data_client = None
+        else:
+            self.data_client = None
+            print("Warning: APCA_API_KEY_ID or APCA_API_SECRET_KEY not found in environment.")
 
         # Initialize CSV log file with headers if it doesn't exist
         if not os.path.exists(self.log_file):
@@ -30,14 +39,32 @@ class PaperTradingEngine:
 
     def _fetch_latest_data(self):
         """
-        Mock function: In a real script, this would use Alpaca API to fetch the latest
-        hourly candle for the trading pair (e.g., EUR/USD or Crypto equivalent).
+        Fetches the latest hourly candles for BTC/USD via Alpaca Crypto API.
+        Note: Alpaca's crypto endpoint is used as a proxy for 24/5 FX demonstration.
         """
-        # Mocking a simple 5-bar window needed by the Strategy class
+        if self.data_client:
+            try:
+                request_params = CryptoBarsRequest(
+                    symbol_or_symbols=["BTC/USD"],
+                    timeframe=TimeFrame.Hour,
+                    limit=20 # Fetch enough history for SMC window
+                )
+                bars = self.data_client.get_crypto_bars(request_params)
+                df = bars.df
+                # Reset index to make 'symbol' and 'timestamp' columns accessible if needed
+                # Rename columns to match Strategy class expectations (High, Low, Close)
+                df = df.rename(columns={'high': 'High', 'low': 'Low', 'close': 'Close'})
+                return df
+            except Exception as e:
+                print(f"Error fetching data from Alpaca: {e}")
+                # Fallback to mock data if API fails to keep loop running
+                pass
+
+        print("Using mock data due to API client absence/failure...")
         data = {
-            'High': [1.0500, 1.0520, 1.0490, 1.0550, 1.0560],
-            'Low': [1.0450, 1.0460, 1.0410, 1.0480, 1.0500],
-            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0540]
+            'High': [1.0500, 1.0520, 1.0490, 1.0550, 1.0560] * 4,
+            'Low': [1.0450, 1.0460, 1.0410, 1.0480, 1.0500] * 4,
+            'Close': [1.0480, 1.0510, 1.0430, 1.0530, 1.0540] * 4
         }
         df = pd.DataFrame(data)
         return df
