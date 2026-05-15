@@ -6,6 +6,7 @@ import pandas as pd
 from strategy import Strategy
 from research_team import ResearchTeam
 from singularity_engine import SingularityEngine
+from neural_ensemble import NeuralEnsembleBrain
 import json
 
 # Mock/Skeleton for Alpaca API
@@ -24,6 +25,7 @@ class PaperTradingEngine:
         self.strategy = Strategy()
         self.research_team = ResearchTeam()
         self.singularity = SingularityEngine()
+        self.ai_brain = NeuralEnsembleBrain()
         self.log_file = "paper_results.csv"
         self.initial_balance = 10000.0
         self.balance = self.initial_balance
@@ -256,6 +258,9 @@ class PaperTradingEngine:
             is_rejection = self.strategy.identify_rejection_blocks(window_15m)
             atr_val = self.strategy.calculate_atr(window_15m)
 
+            hurst_val = self.strategy.calculate_hurst_exponent(window_15m)
+            has_volume_imbalance = self.strategy.analyze_order_flow_imbalance(window_15m)
+
             # Macro Filter (Mocking VIX > 25 condition randomly for demonstration)
             import random
             vix_high = random.choice([True, False])
@@ -289,6 +294,15 @@ class PaperTradingEngine:
             has_secondary = False # Disabling secondary entries based on prompt strict "all 5 must be true" constraint
 
             if has_primary:
+                # God Mode AI Filter
+                ai_approved, pos = self.ai_brain.evaluate_trade(window_15m, window_5m, window_1h)
+                if not ai_approved:
+                    reasoning = f"Setup identified but blocked by AI Brain (PoS: {pos*100:.2f}% < 80%). Hurst: {hurst_val:.2f}, VolImbal: {has_volume_imbalance}"
+                    action = "PASS"
+                    self.log_trade(action, reasoning, drawdown_status)
+                    time.sleep(poll_interval_seconds)
+                    continue
+
                 if not valid_time:
                     reasoning = f"Setup identified but blocked by Time Window Filter (Current GMT: {h}:00)"
                     action = "PASS"
@@ -428,5 +442,5 @@ class PaperTradingEngine:
 
 if __name__ == "__main__":
     engine = PaperTradingEngine()
-    # Setting an extremely short sleep interval for demonstration purposes before reverting
-    engine.run_paper_trading_loop(poll_interval_seconds=1)
+    # Use 5 minutes (300s) as default to avoid yfinance rate limits
+    engine.run_paper_trading_loop(poll_interval_seconds=300)

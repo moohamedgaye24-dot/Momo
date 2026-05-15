@@ -88,11 +88,11 @@ class OracleManager:
         with open("strategy.py", "r") as f:
             code = f.read()
 
-        # Example 1: Tightening Breaker Block validation (must break low significantly, not just <=)
-        code = code.replace("window['Close'].iloc[-1] <= window['Low'].iloc[-3]", "window['Close'].iloc[-1] < (window['Low'].iloc[-3] * 0.999)")
+        # Example 1: Tightening Breaker Block validation (must break low significantly, not just < 0.999)
+        code = code.replace("window['Close'].iloc[-1] < (window['Low'].iloc[-3] * 0.999)", "window['Close'].iloc[-1] < (window['Low'].iloc[-3] * 0.998)")
 
-        # Example 2: Tightening Rejection Blocks (Wicks must be 3x the body instead of 2x)
-        code = code.replace("(upper_wick > body * 2) or (lower_wick > body * 2)", "(upper_wick > body * 3) or (lower_wick > body * 3)")
+        # Example 2: Tightening Rejection Blocks (Wicks must be 4x the body instead of 3x)
+        code = code.replace("(upper_wick > body * 3) or (lower_wick > body * 3)", "(upper_wick > body * 4) or (lower_wick > body * 4)")
 
         with open("strategy.py", "w") as f:
             f.write(code)

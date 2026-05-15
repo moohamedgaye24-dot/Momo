@@ -104,6 +104,49 @@ class Strategy:
         atr = true_range.rolling(period).mean().iloc[-1]
         return atr
 
+    def calculate_hurst_exponent(self, window, lags_to_test=20):
+        """
+        Calculates the Hurst Exponent to classify the market regime:
+        H < 0.5: Mean Reverting
+        H = 0.5: Random Walk
+        H > 0.5: Trending
+        """
+        ts = window['Close'].values
+        if len(ts) < lags_to_test * 2:
+            return 0.5 # Default Random Walk
+
+        tau = []
+        lagvec = []
+
+        # Step through different lags
+        lags = range(2, lags_to_test)
+        for lag in lags:
+            # Calculate price differences at lag
+            pdiff = np.subtract(ts[lag:], ts[:-lag])
+            # Calculate variance
+            tau.append(np.sqrt(np.std(pdiff)))
+            lagvec.append(lag)
+
+        # Fit log-log plot to find slope (Hurst Exponent)
+        poly = np.polyfit(np.log(lagvec), np.log(tau), 1)
+        hurst = poly[0] * 2.0
+        return hurst
+
+    def analyze_order_flow_imbalance(self, window):
+        """
+        Simulates Volume Profile / Order Flow analysis.
+        Checks if institutional volume is backing the swept level.
+        """
+        if 'Volume' not in window.columns or len(window) < 5:
+            return True # Fallback if volume data unavailable
+
+        recent_vol = window['Volume'].iloc[-5:-1].mean()
+        current_vol = window['Volume'].iloc[-1]
+
+        # Volume spike > 1.5x average implies strong institutional interest
+        has_imbalance = current_vol > (recent_vol * 1.5)
+        return has_imbalance
+
     def check_trend_filter(self, window, direction):
         """
         1-hour trend confirms direction via 50 EMA.

@@ -3,8 +3,10 @@
 This document codifies the operational hierarchy and logic flow of the autonomous self-improving Forex trading system.
 
 ## 1. Analysts
-- **Technical Analyst (`strategy.py`):** Responsible for parsing 1-hour interval data to identify primary Smart Money Concepts (SMC) setups, including Liquidity Sweeps and Fair Value Gaps (FVG). Also identifies secondary confirmations such as Breaker Blocks and Rejection Blocks, and calculates ATR for volatility-scaled position sizing.
+- **Technical Analyst (`strategy.py`):** Responsible for parsing multi-timeframe data (15m, 5m, 1h) to identify primary Smart Money Concepts (SMC) setups, including Liquidity Sweeps and Fair Value Gaps (FVG). Calculates ATR for volatility-scaled position sizing, analyzes Order Flow volume imbalances, and calculates the Hurst Exponent to determine if the market is trending or mean-reverting.
 - **News/Sentiment Analyst (`news_analyst.py`):** Calculates a Sentiment Z-score based on real-time news to filter out trades during conflicting macro conditions.
+- **Singularity Scaling Layer (`singularity_engine.py`):** Uses Fast Fourier Transforms (FFT) and Laurent Series approximations to separate pure market trends from unstable jump-diffusion shocks (Market Dissonance).
+- **Neural Ensemble Brain (`neural_ensemble.py`):** The ultimate AI prediction layer that aggregates predictions from simulated Deep Learning, XGBoost, and SVM models to establish a hard Probability of Success (PoS) floor of 80% before any trade is considered.
 
 ## 2. Researchers (`research_team.py`)
 Triggered only when the Technical Analyst identifies a valid SMC setup.
