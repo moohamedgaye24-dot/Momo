@@ -47,8 +47,8 @@ class ResearchTeam:
         bull_case = self.bullish_researcher(window_data)
         bear_case = self.bearish_researcher(window_data)
 
-        # CRO approves only if the Bullish case significantly outweighs Bearish risks (e.g., > 20% margin)
-        approved = bull_case['score'] > (bear_case['score'] * 1.2)
+        # CRO approves only if the Bullish case is 2x higher than Bearish risks
+        approved = bull_case['score'] > (bear_case['score'] * 2.0)
 
         trace = {
             "bull_score": bull_case['score'],

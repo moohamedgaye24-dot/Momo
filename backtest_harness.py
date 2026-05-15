@@ -20,8 +20,8 @@ class BacktestHarness:
         start_date = end_date - timedelta(days=720) # Max 730 days for 1h data
         start_str = start_date.strftime('%Y-%m-%d')
         end_str = end_date.strftime('%Y-%m-%d')
-        print(f"Fetching EUR/USD data from {start_str} to {end_str} at 1-hour intervals...")
-        data = yf.download('EURUSD=X', start=start_str, end=end_str, interval='1h')
+        print(f"Fetching XAU/USD data from {start_str} to {end_str} at 1-hour intervals...")
+        data = yf.download('GC=F', start=start_str, end=end_str, interval='1h')
         return data
 
     def run_simulation(self, data, risk_multiplier=1.0):
@@ -70,10 +70,26 @@ class BacktestHarness:
             # Pass only the last 20 bars to avoid memory issues and improve efficiency
             window = data.iloc[i-20:i+1]
 
-            liquidity_sweep = self.strategy.identify_liquidity_sweeps(window)
-            fvg = self.strategy.check_fair_value_gap(window)
+            sweep_dir = self.strategy.identify_liquidity_sweeps(window)
+            fvg_dir = self.strategy.check_fair_value_gap(window)
 
-            if liquidity_sweep and fvg:
+            is_liquidity_sweep = sweep_dir is not None
+            is_fvg = fvg_dir is not None
+            trade_direction = sweep_dir if sweep_dir else "BUY"
+
+            trend_aligned = self.strategy.check_trend_filter(window, trade_direction)
+            news_clear = self.strategy.check_news_filter()
+
+            has_primary = is_liquidity_sweep and is_fvg and (sweep_dir == fvg_dir) and trend_aligned and news_clear
+
+            if has_primary:
+                # Meta-Learning Pattern Recognition check (Block setup if last 10 trades failed similarly)
+                if len(self.failed_patterns) >= 10:
+                    recent_fails = self.failed_patterns[-10:]
+                    # Simple mock matching to simulate pattern blocking
+                    if sum(["Simulated market exit against setup" in f for f in recent_fails]) >= 8:
+                        continue # Block setup autonomously
+
                 # Trigger debate for setups
                 cro_approved, trace = self.research_team.cro_consensus(window)
 
