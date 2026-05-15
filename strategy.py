@@ -75,6 +75,30 @@ class Strategy:
         poly = np.polyfit(np.log(lagvec), np.log(tau), 1)
         return poly[0] * 2.0
 
+    def identify_breaker_blocks(self, window):
+        if len(window) < 3: return False
+        close_p = window['Close'].iloc[-1]
+        if isinstance(close_p, pd.Series): close_p = close_p.iloc[0]
+        try:
+            return window['Close'].iloc[-1] < (window['Low'].iloc[-3] * 0.999)
+        except:
+            return False
+
+    def identify_rejection_blocks(self, window):
+        if len(window) < 2: return False
+        try:
+            body = abs(window['Close'].iloc[-1] - window['Open'].iloc[-1])
+            upper_wick = window['High'].iloc[-1] - max(window['Close'].iloc[-1], window['Open'].iloc[-1])
+            lower_wick = min(window['Close'].iloc[-1], window['Open'].iloc[-1]) - window['Low'].iloc[-1]
+
+            if isinstance(body, pd.Series): body = body.iloc[0]
+            if isinstance(upper_wick, pd.Series): upper_wick = upper_wick.iloc[0]
+            if isinstance(lower_wick, pd.Series): lower_wick = lower_wick.iloc[0]
+
+            return (upper_wick > body * 3) or (lower_wick > body * 3)
+        except:
+            return False
+
     def analyze_order_flow_imbalance(self, window):
         if 'Volume' not in window.columns or len(window) < 5: return True
         recent_vol = window['Volume'].iloc[-5:-1].mean()
