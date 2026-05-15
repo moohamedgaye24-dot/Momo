@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+traces/
+research_weights.json
+oracle_warnings.md
+paper_results.csv
+models/

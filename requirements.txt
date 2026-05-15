@@ -1,0 +1,7 @@
+pandas
+numpy
+requests
+yfinance
+alpaca-py
+pyzmq
+torch --index-url https://download.pytorch.org/whl/cpu
