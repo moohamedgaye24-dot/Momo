@@ -197,8 +197,33 @@ Reply ONLY valid JSON: {"action":"buy"|"sell"|"close"|"wait","instrument":"XAU/U
           entry:price,cur:price,size:agent.cfg.sizeUSD,sl:agent.cfg.stopLoss,tp:agent.cfg.takeProfit,
           pnl:0,pnlPct:0,t1:ts(),reason:dec.reason,
         };
-        const nxt=[...posR.current,pos];
-        posR.current=nxt;setPos(nxt);
+
+        let riskPassed = true;
+        let riskReason = "";
+
+        if (!pos.sl || pos.sl <= 0) {
+          riskPassed = false;
+          riskReason = "Stop Loss required";
+        } else if (pos.size > 50000) {
+          riskPassed = false;
+          riskReason = "Position exceeds maximum size";
+        } else if (portR.current < BALANCE * 0.99) {
+          riskPassed = false;
+          riskReason = "Exceeds Max Daily Risk (1%)";
+        }
+
+        if (riskPassed) {
+          const rmLog = { id: uid(), t: ts(), agId: "risk", agName: "Risk Manager", color: "#f87171", msg: "[Risk Manager]: Trade approved." };
+          tLogsR.current = [rmLog, ...tLogsR.current].slice(0, 100);
+          setTLogs(tLogsR.current);
+
+          const nxt=[...posR.current,pos];
+          posR.current=nxt;setPos(nxt);
+        } else {
+          const rmLog = { id: uid(), t: ts(), agId: "risk", agName: "Risk Manager", color: "#f87171", msg: `[Risk Manager REJECTED]: Position exceeds maximum risk parameters (${riskReason}).` };
+          tLogsR.current = [rmLog, ...tLogsR.current].slice(0, 100);
+          setTLogs(tLogsR.current);
+        }
       }else if(dec.action==="close"&&dec.posId){
         const pos=posR.current.find(p=>p.id===dec.posId&&p.agId===agent.id);
         if(pos){
