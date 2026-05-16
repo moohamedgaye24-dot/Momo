@@ -54,6 +54,7 @@ export default function App(){
   const [positions,setPos]     = useState([]);
   const [history,  setHist]    = useState([]);
   const [julesLog, setJLog]    = useState([]);
+  const [thoughtLogs, setTLogs] = useState([]);
   const [portfolio,setPort]    = useState(BALANCE);
   const [tab,      setTab]     = useState("positions");
   const [busy,     setBusy]    = useState({});
@@ -64,6 +65,7 @@ export default function App(){
   const agR   = useRef(INIT_AGENTS);
   const posR  = useRef([]);
   const histR = useRef([]);
+  const tLogsR= useRef([]);
   const portR = useRef(BALANCE);
   const runR  = useRef(false);
   const dIdx  = useRef(0);
@@ -73,6 +75,7 @@ export default function App(){
   useEffect(()=>{agR.current=agents;}, [agents]);
   useEffect(()=>{posR.current=positions;},[positions]);
   useEffect(()=>{histR.current=history;},[history]);
+  useEffect(()=>{tLogsR.current=thoughtLogs;},[thoughtLogs]);
   useEffect(()=>{portR.current=portfolio;},[portfolio]);
   useEffect(()=>{runR.current=running;}, [running]);
 
@@ -160,6 +163,15 @@ Reply ONLY valid JSON: {"action":"buy"|"sell"|"close"|"wait","instrument":"EUR/U
       :`You are ReversionBot, a mean-reversion agent. Trade XAU/USD only. Buy when price far BELOW ma20 (deviation/${agent.cfg.entryThreshold} std), sell when far ABOVE. Max ${agent.cfg.maxPos} positions. SL=${agent.cfg.stopLoss}% TP=${agent.cfg.takeProfit}%.
 Stats: ${agent.stats.n} trades, WR:${agent.stats.n>0?(agent.stats.wins/agent.stats.n*100).toFixed(0):0}%, PnL:$${agent.stats.pnl.toFixed(0)}
 Reply ONLY valid JSON: {"action":"buy"|"sell"|"close"|"wait","instrument":"XAU/USD"|null,"posId":null,"reason":"≤10 words"}`;
+    const addTLog = (msg) => {
+      const entry = { id: uid(), t: ts(), agId: agent.id, agName: agent.name, color: agent.color, msg };
+      const nxt = [entry, ...tLogsR.current].slice(0, 100);
+      tLogsR.current = nxt;
+      setTLogs(nxt);
+    };
+
+    addTLog(`Analyzing market... EUR/USD:${mdata.find(d=>d.inst==="EUR/USD")?.price||"—"} XAU/USD:${mdata.find(d=>d.inst==="XAU/USD")?.price||"—"}`);
+
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",headers:{"Content-Type":"application/json"},
@@ -171,6 +183,12 @@ Reply ONLY valid JSON: {"action":"buy"|"sell"|"close"|"wait","instrument":"XAU/U
       const d=await res.json();
       const raw=d.content?.[0]?.text||'{"action":"wait"}';
       const dec=JSON.parse(raw.replace(/```json?|```/g,"").trim());
+
+      let logMsg = `Decided to ${dec.action.toUpperCase()}`;
+      if(dec.instrument) logMsg += ` on ${dec.instrument}`;
+      if(dec.reason) logMsg += `. Reason: ${dec.reason}`;
+      addTLog(logMsg);
+
       if((dec.action==="buy"||dec.action==="sell")&&dec.instrument&&agent.instruments.includes(dec.instrument)&&myPos.length<agent.cfg.maxPos){
         const price=m[dec.instrument]?.price||0;
         const pos={
@@ -394,7 +412,7 @@ Reply ONLY JSON: {"agentId":"momentum"|"reversion","changes":{},"reasoning":"≤
 
       {/* ── TABS ── */}
       <div style={{display:"flex",gap:0,borderBottom:"1px solid #1a2535",marginBottom:6}}>
-        {[["positions",`POSITIONS (${positions.length})`],["history",`HISTORY (${history.length})`],["juleslog",`JULES LOG (${julesLog.length})`]].map(([id,label])=>(
+        {[["positions",`POSITIONS (${positions.length})`],["history",`HISTORY (${history.length})`],["juleslog",`JULES LOG (${julesLog.length})`],["thoughtlogs",`THOUGHT LOGS`]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{padding:"5px 14px",background:tab===id?"#0e1a2a":"transparent",color:tab===id?"#f0b429":"#3d5166",border:"none",borderBottom:tab===id?"2px solid #f0b429":"2px solid transparent",cursor:"pointer",fontSize:9,fontFamily:"monospace",letterSpacing:2}}>
             {label}
           </button>
@@ -461,6 +479,21 @@ Reply ONLY JSON: {"agentId":"momentum"|"reversion","changes":{},"reasoning":"≤
                 </div>
               </div>
             ))
+        )}
+
+        {tab==="thoughtlogs"&&(
+          <div style={{height:154,overflowY:"auto",paddingRight:4,display:"flex",flexDirection:"column-reverse"}}>
+            {thoughtLogs.length===0
+              ?<div style={{color:"#2d3d50",textAlign:"center",paddingTop:55,fontSize:11,letterSpacing:1}}>WAITING FOR AGENT THOUGHTS...</div>
+              :thoughtLogs.map(l=>(
+                <div key={l.id} className="row-in" style={{fontFamily:"monospace",fontSize:10,marginBottom:4,lineHeight:1.4}}>
+                  <span style={{color:"#3d5166"}}>[{l.t}] </span>
+                  <span style={{color:l.color,fontWeight:"bold"}}>{l.agName}: </span>
+                  <span style={{color:"#c9d1d9"}}>{l.msg}</span>
+                </div>
+              ))
+            }
+          </div>
         )}
       </div>
 
